@@ -23,19 +23,27 @@ RUN python3 -m pip install -r /opt/requirements.txt
 
 RUN cd /opt && git clone https://github.com/llvm/llvm-project.git
 RUN cd /opt/llvm-project && git reset --hard 26ee8947702d79ce2cab8e577f713685a5ca4a55
-WORKDIR /opt/llvm-project
+RUN mkdir /opt/llvm-project/build
+WORKDIR /opt/llvm-project/build
 
-RUN apt install -y clang lld
-RUN cmake -G Ninja llvm \
-   -DLLVM_ENABLE_PROJECTS=mlir \
+RUN apt-get update && \
+    apt-get install -y clang lld lldb ninja-build
+
+RUN cmake -G Ninja ../llvm \
+   -DLLVM_ENABLE_PROJECTS="mlir" \
+   -DLLVM_ENABLE_LLD=ON \
    -DCMAKE_C_COMPILER=clang \
    -DCMAKE_CXX_COMPILER=clang++ \
-   -DLLVM_ENABLE_LLD=ON \
+   -DCMAKE_LINKER=lld \
+   -DLLVM_INSTALL_UTILS=ON \
+   -DMLIR_ENABLE_BINDINGS_PYTHON=ON \
    -DLLVM_BUILD_EXAMPLES=ON \
-   -DLLVM_TARGETS_TO_BUILD="X86" \
+   -DLLVM_TARGETS_TO_BUILD=host \
    -DCMAKE_BUILD_TYPE=Release \
-   -DLLVM_ENABLE_ASSERTIONS=ON && \
-   cmake --build . --target check-mlir
+   -DLLVM_ENABLE_ASSERTIONS=ON \
+   -DPython3_EXECUTABLE=$(which python3) && \
+   cmake --build . -j$(nproc) && \
+   cmake --build . --target install
 
 
 
